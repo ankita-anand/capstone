@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from bs4.element import Comment, Doctype
+from bs4.element import Comment, Doctype, NavigableString
 
 from tqdm import tqdm
 
@@ -8,6 +8,49 @@ import requests
 import json
 
 base = "https://en.wikipedia.org/"
+
+
+def scrape_intro(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = remove_tags(soup)
+    matches = soup.find('p')
+    text = matches.text
+    for sibling in matches.next_siblings:
+        if type(sibling) == NavigableString:
+            text += str(sibling)
+        elif sibling.name != 'p':
+            break
+        else:
+            text += sibling.get_text()
+    return (text.strip())
+
+
+def scrape_section(url):
+    response = requests.get(url)
+    sec_id = (response.url.split('#')[1])
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    match = soup.find(id=sec_id).parent
+
+    next = match.next_sibling
+    while(type(next) == NavigableString):
+        next = next.next_sibling
+    if next.name == 'div':
+        return scrape_intro('https://en.wikipedia.org'+next.find('a')['href'])
+
+    soup = remove_tags(BeautifulSoup(response.text, 'html.parser'))
+    matches = soup.find(id=sec_id).parent
+    text = ''
+    for sibling in matches.next_siblings:
+        if type(sibling) == NavigableString:
+            text += str(sibling)
+        elif sibling.name != 'p':
+            break
+        else:
+            text += sibling.get_text()
+    return (text.strip())
+
 
 def remove_tags(soup):
     for comments in soup.findAll(text=lambda text: isinstance(text, Comment) or isinstance(text, Doctype)):
@@ -187,37 +230,38 @@ def merge_redirects_with_depth_one_links():
 
 
 def merge_redirects_with_depth_two_links(depth_two_urls_to_hash_text, original_to_redirected_links):
+    link_to_final_page = json.loads(open(original_to_redirected_links, "r", encoding="utf-8").read())
+    pruned_depth_two_urls = set(link_to_final_page.values())
+
     # Merge all the single/two backslash urls
     depth_two_tree_with_hash_text = json.loads(open(depth_two_urls_to_hash_text, "r", encoding="utf-8").read()) # has the link text and hash text
     all_depth_two_urls_with_hash_text = dict()
     for page_url in depth_two_tree_with_hash_text:
         text = depth_two_tree_with_hash_text[page_url]
-        if page_url.startswith("https://en.wikipedia.org//wiki/"):
-            page_url = page_url.replace("https://en.wikipedia.org//wiki/", "https://en.wikipedia.org/wiki/")
+
+        if page_url in link_to_final_page:
+            page_url = link_to_final_page[page_url]
+        elif page_url.startswith(base + "/wiki/") and \
+                page_url.replace(base + "/wiki/", base + "wiki/") in link_to_final_page:
+            page_url = link_to_final_page[page_url.replace(base + "/wiki/", base + "wiki/")]
 
         if page_url in all_depth_two_urls_with_hash_text:
-            all_depth_two_urls_with_hash_text[page_url].extend(text)
+            all_depth_two_urls_with_hash_text[page_url].update(text)
         else:
-            all_depth_two_urls_with_hash_text[page_url] = text
-
-    link_to_final_page = json.loads(open(original_to_redirected_links, "r", encoding="utf-8").read())
-    pruned_depth_two_urls = set(link_to_final_page.keys())
+            all_depth_two_urls_with_hash_text[page_url] = set(text)
 
     pruned_depth_two_url_with_hashes = dict()
     for page_url in pruned_depth_two_urls:
-        if page_url.startswith("https://en.wikipedia.org//wiki/"):
-            page_url = page_url.replace("https://en.wikipedia.org//wiki/", "https://en.wikipedia.org/wiki/")
-
         pruned_depth_two_url_with_hashes[page_url] = all_depth_two_urls_with_hash_text[page_url]
 
     final_link_to_link_text = dict()
     scrape_only_section = dict()
+
     for url in pruned_depth_two_url_with_hashes:
-        final_url = link_to_final_page[url]
-        if '#' in final_url:
-            scrape_only_section[final_url] = pruned_depth_two_url_with_hashes[url]
+        if '#' in url:
+            scrape_only_section[url] = pruned_depth_two_url_with_hashes[url]
         else:
-            final_link_to_link_text[final_url] = pruned_depth_two_url_with_hashes[url]
+            final_link_to_link_text[url] = pruned_depth_two_url_with_hashes[url]
 
     return final_link_to_link_text, scrape_only_section
 
@@ -244,12 +288,24 @@ if __name__ == "__main__":
     final_link_to_link_text, scrape_only_section = merge_redirects_with_depth_two_links('wiki pages and concepts depth two.json',
                                                                                         'go_original_to_final_depth_two.json')
 
-    pages_scraped = dict()
-    for i, url in tqdm(enumerate(final_link_to_link_text)):
-        pages_scraped[url] = scrape_page(url)
+    for page_link, text_and_sections in final_link_to_link_text.items():
+        # If there was only a link to a particular section on this page, scrape only this section
+        if None not in text_and_sections:
+            pass
+        else:
+            # Scrape the page
+            pass
 
-    with open('pages_scraped.json', 'w', encoding='utf-8') as f:
-        json.dump(pages_scraped, f, indent=4)
+            # Remove the None element
+            text_and_sections.remove(None)
+
+            # Go through the rest for the #text
+            for s in text_and_sections:
+                if s.startswith('#'):
+                    # Scrape this section on the page
+                    # Check whether it changed only the section and not a main page
+                    pass
+
 
 
 
