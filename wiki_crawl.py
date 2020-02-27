@@ -11,10 +11,19 @@ base = "https://en.wikipedia.org/"
 
 
 def scrape_intro(url):
+    print("Scraping intro: " + url)
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     soup = remove_tags(soup)
+
+    matches = soup.find_all('table', class_=["infobox", "wikitable", "vertical-navbox"])
+    for match in matches:
+        match.decompose()
+
     matches = soup.find('p')
+    while type(matches) != NavigableString and len(matches.attrs) != 0 or matches.name != 'p':
+            matches = matches.next_sibling
+
     text = matches.text
     for sibling in matches.next_siblings:
         if type(sibling) == NavigableString:
@@ -27,22 +36,25 @@ def scrape_intro(url):
 
 
 def scrape_section(url):
+    print("Scraping section: " + url)
     response = requests.get(url)
     sec_id = (response.url.split('#')[1])
 
     soup = BeautifulSoup(response.text, 'html.parser')
-    match = soup.find(id=sec_id)
+    match = soup.find(id=sec_id, class_='mw-headline')
     if not match:
-        return None
+        return None, None
+    if not match.name == 'span' and 'nourlexpansion' not in match['class']:
+        return None, None
 
-    h_number = match.name
     match = match.parent
+    h_number = match.name
 
     next = match.next_sibling
     while type(next) == NavigableString:
         next = next.next_sibling
-    if next.name == 'div':
-        main_article = 'https://en.wikipedia.org'+next.find('a')['href']
+    if next.name == 'div' and next.has_attr('role') and next['role'] == 'note':
+        main_article = 'https://en.wikipedia.org' + next.find('a')['href']
         return main_article, scrape_intro(main_article)
     else:
         soup = remove_tags(BeautifulSoup(response.text, 'html.parser'))
@@ -51,12 +63,11 @@ def scrape_section(url):
         for sibling in matches.next_siblings:
             if type(sibling) == NavigableString:
                 text += str(sibling)
-            elif sibling.name != 'p' or sibling.name[0] == h_number:
+            elif sibling.name[0] == h_number:
                 break
-            else:
+            elif sibling.name == 'p':
                 text += sibling.get_text()
     return response.url, text.strip()
-
 
 def remove_tags(soup):
     for comments in soup.findAll(text=lambda text: isinstance(text, Comment) or isinstance(text, Doctype)):
@@ -297,22 +308,26 @@ if __name__ == "__main__":
                                                                                         'go_original_to_final_depth_two.json')
 
     scraped_text = dict()
-    for url, text_and_sections in final_link_to_link_text.items():
-        # If there was only a link to a particular section on this page, scrape only this section
-        if None not in text_and_sections:
-            pass
-        else:
+    for url, text_and_sections in tqdm(final_link_to_link_text.items()):
+        if 'disambiguation' in url:
+            continue
+
+        if None in text_and_sections:
             # Scrape the page intro
             scraped_text[url] = str(scrape_intro(url).encode('ascii','ignore'))
 
             # Remove the None element
             text_and_sections.remove(None)
 
-            # Go through the rest for the #text
-            for s in text_and_sections:
-                if s.startswith('#'):
-                    # Scrape this section on the page
-                    # Check whether it changed only the section and not a main page
-                    response_url, text = scrape_section(url+s)
+        # Go through the rest for the #text
+        # If there was only a link to a particular section on this page, scrape only this section
+        for s in text_and_sections:
+            if s.startswith('#'):
+                # Scrape this section on the page
+                # Check whether it changed only the section and not a main page
+                response_url, text = scrape_section(url+s)
+                if response_url is not None:
                     scraped_text[response_url] = str(text.encode('ascii','ignore'))
 
+    with open('scraped_intro_sections_depth_two.json', 'w', encoding='utf-8') as f:
+        json.dump(scraped_text, f, indent=4)
