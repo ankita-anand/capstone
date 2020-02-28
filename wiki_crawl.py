@@ -31,7 +31,12 @@ def scrape_section(url):
     sec_id = (response.url.split('#')[1])
 
     soup = BeautifulSoup(response.text, 'html.parser')
-    match = soup.find(id=sec_id).parent
+    match = soup.find(id=sec_id)
+    if not match:
+        return None
+
+    h_number = match.name
+    match = match.parent
 
     next = match.next_sibling
     while type(next) == NavigableString:
@@ -39,17 +44,17 @@ def scrape_section(url):
     if next.name == 'div':
         main_article = 'https://en.wikipedia.org'+next.find('a')['href']
         return main_article, scrape_intro(main_article)
-
-    soup = remove_tags(BeautifulSoup(response.text, 'html.parser'))
-    matches = soup.find(id=sec_id).parent
-    text = ''
-    for sibling in matches.next_siblings:
-        if type(sibling) == NavigableString:
-            text += str(sibling)
-        elif sibling.name != 'p':
-            break
-        else:
-            text += sibling.get_text()
+    else:
+        soup = remove_tags(BeautifulSoup(response.text, 'html.parser'))
+        matches = soup.find(id=sec_id).parent
+        text = ''
+        for sibling in matches.next_siblings:
+            if type(sibling) == NavigableString:
+                text += str(sibling)
+            elif sibling.name != 'p' or sibling.name[0] == h_number:
+                break
+            else:
+                text += sibling.get_text()
     return response.url, text.strip()
 
 
@@ -308,8 +313,3 @@ if __name__ == "__main__":
                     # Scrape this section on the page
                     # Check whether it changed only the section and not a main page
                     pass
-
-
-
-
-
