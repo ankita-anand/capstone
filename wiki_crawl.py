@@ -23,7 +23,7 @@ def scrape_intro(url):
             break
         else:
             text += sibling.get_text()
-    return (text.strip())
+    return text.strip()
 
 
 def scrape_section(url):
@@ -34,10 +34,11 @@ def scrape_section(url):
     match = soup.find(id=sec_id).parent
 
     next = match.next_sibling
-    while(type(next) == NavigableString):
+    while type(next) == NavigableString:
         next = next.next_sibling
     if next.name == 'div':
-        return scrape_intro('https://en.wikipedia.org'+next.find('a')['href'])
+        main_article = 'https://en.wikipedia.org'+next.find('a')['href']
+        return main_article, scrape_intro(main_article)
 
     soup = remove_tags(BeautifulSoup(response.text, 'html.parser'))
     matches = soup.find(id=sec_id).parent
@@ -49,7 +50,7 @@ def scrape_section(url):
             break
         else:
             text += sibling.get_text()
-    return (text.strip())
+    return response.url, text.strip()
 
 
 def remove_tags(soup):
@@ -87,6 +88,7 @@ def remove_tags(soup):
 
     return soup
 
+
 def scrape_page(url):
     req = requests.get(url)
     soup = BeautifulSoup(req.content, 'html.parser')
@@ -98,6 +100,7 @@ def scrape_page(url):
         match.decompose()
     text = " ".join(t.strip() for t in soup.find_all(text=True))
     return text
+
 
 def scrape_links(url):
     links_in_page = {}
@@ -136,6 +139,7 @@ def scrape_depth_two():
 
     return depth_two_tree
 
+
 def scrape_depth_one():
     tree = dict()
     root_nodes = ["Machine_learning",
@@ -147,7 +151,6 @@ def scrape_depth_one():
         url = "https://en.wikipedia.org/wiki/" + root_node
         links_in_page = scrape_links(url)
         tree[root_node] = links_in_page
-
     return tree
 
 
