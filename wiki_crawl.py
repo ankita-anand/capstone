@@ -9,6 +9,53 @@ import json
 
 base = "https://en.wikipedia.org/"
 
+def scrape_text_for_concept_embedding(final_link_to_link_text, scrape_only_section):
+
+    scraped_text = dict()
+
+    for url, text_and_sections in tqdm(final_link_to_link_text.items()):
+        if 'disambiguation' in url:
+            continue
+
+        if None in text_and_sections:
+            # Scrape the page intro
+            scraped_text[url] = str(scrape_intro(url).encode('ascii', 'ignore'))
+
+            # Remove the None element
+            text_and_sections.remove(None)
+
+        # Go through the rest for the #text
+        # If there was only a link to a particular section on this page, scrape only this section
+        for s in text_and_sections:
+            if s.startswith('#'):
+                # Scrape this section on the page
+                # Check whether it changed only the section and not a main page
+                response_url, text = scrape_section(url + s)
+                if response_url is not None:
+                    scraped_text[response_url] = str(text.encode('ascii', 'ignore'))
+
+    for url, text_and_sections in tqdm(scrape_only_section.items()):
+        if 'disambiguation' in url:
+            continue
+
+        # Scrape the section in the URL
+        response_url, text = scrape_section(url)
+        if response_url is not None:
+            scraped_text[response_url] = str(text.encode('ascii','ignore'))
+
+        # Go through the rest for the #text
+        # If there was only a link to a particular section on this page, scrape only this section
+        url = url.split('#')[0]
+        for s in text_and_sections:
+            if s is not None and s.startswith('#'):
+                # Scrape this section on the page
+                # Check whether it changed only the section and not a main page
+                response_url, text = scrape_section(url+s)
+                if response_url is not None:
+                    scraped_text[response_url] = str(text.encode('ascii','ignore'))
+
+    return scraped_text
+
 
 def scrape_intro(url):
     print("Scraping intro: " + url)
@@ -16,7 +63,9 @@ def scrape_intro(url):
     soup = BeautifulSoup(response.text, 'html.parser')
     soup = remove_tags(soup)
 
-    matches = soup.find_all('table', class_=["infobox", "wikitable", "vertical-navbox"])
+    matches = soup.find_all('table', class_=["infobox", "wikitable", "vertical-navbox",
+                                             "ambox", "cmbox", "imbox", "tmbox", "fmbox", "ombox", "mbox"])
+
     for match in matches:
         match.decompose()
 
@@ -63,9 +112,9 @@ def scrape_section(url):
         for sibling in matches.next_siblings:
             if type(sibling) == NavigableString:
                 text += str(sibling)
-            elif sibling.name[0] == h_number:
+            elif sibling.name == h_number or (sibling.name[0] == 'h' and int(sibling.name[1:]) > int(h_number[1:])):
                 break
-            elif sibling.name == 'p':
+            else:
                 text += sibling.get_text()
     return response.url, text.strip()
 
@@ -307,27 +356,9 @@ if __name__ == "__main__":
     final_link_to_link_text, scrape_only_section = merge_redirects_with_depth_two_links('wiki pages and concepts depth two.json',
                                                                                         'go_original_to_final_depth_two.json')
 
-    scraped_text = dict()
-    for url, text_and_sections in tqdm(final_link_to_link_text.items()):
-        if 'disambiguation' in url:
-            continue
-
-        if None in text_and_sections:
-            # Scrape the page intro
-            scraped_text[url] = str(scrape_intro(url).encode('ascii','ignore'))
-
-            # Remove the None element
-            text_and_sections.remove(None)
-
-        # Go through the rest for the #text
-        # If there was only a link to a particular section on this page, scrape only this section
-        for s in text_and_sections:
-            if s.startswith('#'):
-                # Scrape this section on the page
-                # Check whether it changed only the section and not a main page
-                response_url, text = scrape_section(url+s)
-                if response_url is not None:
-                    scraped_text[response_url] = str(text.encode('ascii','ignore'))
+    scraped_text = scrape_text_for_concept_embedding(final_link_to_link_text, scrape_only_section)
 
     with open('scraped_intro_sections_depth_two.json', 'w', encoding='utf-8') as f:
         json.dump(scraped_text, f, indent=4)
+
+
