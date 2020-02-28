@@ -296,13 +296,14 @@ if __name__ == "__main__":
     final_link_to_link_text, scrape_only_section = merge_redirects_with_depth_two_links('wiki pages and concepts depth two.json',
                                                                                         'go_original_to_final_depth_two.json')
 
-    for page_link, text_and_sections in final_link_to_link_text.items():
+    scraped_text = dict()
+    for url, text_and_sections in final_link_to_link_text.items():
         # If there was only a link to a particular section on this page, scrape only this section
         if None not in text_and_sections:
             pass
         else:
-            # Scrape the page
-            pass
+            # Scrape the page intro
+            scraped_text[url] = str(scrape_intro(url).encode('ascii','ignore'))
 
             # Remove the None element
             text_and_sections.remove(None)
@@ -312,4 +313,6 @@ if __name__ == "__main__":
                 if s.startswith('#'):
                     # Scrape this section on the page
                     # Check whether it changed only the section and not a main page
-                    pass
+                    response_url, text = scrape_section(url+s)
+                    scraped_text[response_url] = str(text.encode('ascii','ignore'))
+
