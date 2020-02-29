@@ -88,7 +88,6 @@ def scrape_section(url):
     print("Scraping section: " + url)
     response = requests.get(url)
     sec_id = (response.url.split('#')[1])
-
     soup = BeautifulSoup(response.text, 'html.parser')
     match = soup.find(id=sec_id, class_='mw-headline')
     if not match:
@@ -96,23 +95,31 @@ def scrape_section(url):
     if not match.name == 'span' and 'nourlexpansion' not in match['class']:
         return None, None
 
+
     match = match.parent
     h_number = match.name
-
     next = match.next_sibling
+
     while type(next) == NavigableString:
         next = next.next_sibling
+
     if next.name == 'div' and next.has_attr('role') and next['role'] == 'note':
         main_article = 'https://en.wikipedia.org' + next.find('a')['href']
         return main_article, scrape_intro(main_article)
     else:
         soup = remove_tags(BeautifulSoup(response.text, 'html.parser'))
+        matches = soup.find_all('table', class_=["infobox", "wikitable", "vertical-navbox",
+                                                 "ambox", "cmbox", "imbox", "tmbox", "fmbox", "ombox", "mbox"])
+
+        for match in matches:
+            match.decompose()
+
         matches = soup.find(id=sec_id).parent
         text = ''
         for sibling in matches.next_siblings:
             if type(sibling) == NavigableString:
                 text += str(sibling)
-            elif sibling.name == h_number or (sibling.name[0] == 'h' and int(sibling.name[1:]) > int(h_number[1:])):
+            elif sibling.name == h_number or (sibling.name[0] == 'h' and int(sibling.name[1:]) < int(h_number[1:])):
                 break
             else:
                 text += sibling.get_text()

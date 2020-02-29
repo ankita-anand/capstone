@@ -3,11 +3,10 @@ import tensorflow_hub as hub
 
 
 class Embedder():
-    url = "https://tfhub.dev/google/elmo/2"
-
-    def __init__(self):
-        pass
-
+        
+    def __init__(self, url='https://tfhub.dev/google/elmo/3'):
+        self.embedder = hub.Module(url)
+    
     def preprocess(self, text):
         return text
 
@@ -17,8 +16,7 @@ class Embedder():
         return tokens
 
     def embed(self, tokens):
-        embedder = hub.Module(Embedder.url)
-        embedding = embedder(tokens,
+        embedding = self.embedder(tokens,
                              signature='default',
                              as_dict=True)['default']
         with tf.Session() as sess:
