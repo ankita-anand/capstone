@@ -77,8 +77,10 @@ def scrape_intro(url):
     for sibling in matches.next_siblings:
         if type(sibling) == NavigableString:
             text += str(sibling)
-        elif sibling.name != 'p':
+        elif sibling.name == 'h2':
             break
+        elif sibling.name != 'p' and sibling.name != 'ul':
+            continue
         else:
             text += sibling.get_text()
     return text.strip()

@@ -42,4 +42,11 @@ copyfile(src, dst)
 depth_two_concept_list = open(dst, 'a')
 for page in page_names:
     depth_two_concept_list.write(page + '\n')
+book = json.loads(open(autophrase + r"\thedeeplearningbook_nopn.json", "r", encoding="utf-8").read())
+for chapter in book:
+    for i, page in enumerate(book[chapter]):
+        text = book[chapter][i]
+        book[chapter][i] = str(text.encode('ascii','ignore').decode("utf-8"))
 
+with open(autophrase + r'\thedeeplearningbook_nopn_fixed.json', 'w', encoding='utf-8') as f:
+    json.dump(book, f, indent=4)
