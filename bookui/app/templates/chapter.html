@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %} Chap. {{ cno }}: {{ ctitle }} {% endblock %}
+{% block page_content %}
+<div class="container container-fluid">
+    <div class="row">
+        <h1>Chapter {{ cno }}: {{ ctitle }}</h1>
+    </div>
+    <div class="row">
+        <div class="jumbotron jumbotron-fluid">
+            <div class="col-lg-12">
+                <style>
+                    .phrase {
+                        font-weight: bold;
+                        color: darkred;
+                        text-emphasis: filled double-circle mediumvioletred;
+                        -webkit-text-emphasis: filled double-circle blue;
+                    }
+                </style>
+                {{ content|safe }}
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="offset-lg-10 col-lg-auto">
+            <div>
+                <ul class="pagination">
+                    <!-- first button -->
+                    {% if pno == 1 %}
+                    <li class="page-item disabled">
+                        {% else %}
+                    <li class="page-item">
+                        {% endif %}
+                        <a class="page-link" href="/chapter/{{ cno }}">&laquo;</a>
+                    </li>
+                    <!-- end of first button -->
+
+                    <!-- prev button -->
+                    {% if pno == 1 %}
+                    <li class="page-item disabled">
+                        {% else %}
+                    <li class="page-item">
+                        {% endif %}
+                        <a class="page-link" href="/chapter/{{ cno }}/{{ pno-1 }}">&lt;</a>
+                    </li>
+                    <!-- end of prev button -->
+
+                    <li class="page-item active">
+                        <a class="page-link" href="#">{{ pno }} of {{ ptot }}</a>
+                    </li>
+
+                    <!-- next button -->
+                    {% if pno == ptot %}
+                    <li class="page-item disabled">
+                        {% else %}
+                    <li class="page-item">
+                        {% endif %}
+                        <a class="page-link" href="/chapter/{{ cno }}/{{ pno+1 }}">&gt;</a>
+                    </li>
+                    <!-- end of next button -->
+
+                    <!-- last button -->
+                    {% if pno == ptot %}
+                    <li class="page-item disabled">
+                        {% else %}
+                    <li class="page-item">
+                        {% endif %}
+                        <a class="page-link" href="/chapter/{{ cno }}/{{ ptot }}">&raquo;</a>
+                    </li>
+                    <!-- end of last button -->
+
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

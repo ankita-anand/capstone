@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %} Table of Contents {% endblock %}
+{% block page_content %}
+<style>[data-href] {
+    cursor: pointer;
+}</style>
+<div class="container container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="page-header centered">
+                <h1 align="center">Table of Contents</h1>
+            </div>
+            <table class="table table-hover table-light">
+                <thead>
+                <tr>
+                    <th>Chapt. No.</th>
+                    <th>Chapter Name</th>
+
+                </tr>
+                </thead>
+                <tbody>
+                {% for i, chapter in chapters %}
+                <tr data-href="/chapter/{{ i }}">
+                    <td> {{ i }} </td>
+                    <td> {{ chapter }} </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>$(document).ready(function () {
+   jQuery(document).ready(function($) {
+    $('*[data-href]').on('click', function() {
+        window.location = $(this).data("href");
+    });
+});
+});
+
+</script>
+{% endblock %}
